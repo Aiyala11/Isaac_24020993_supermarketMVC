@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <style>
+    .tooltip-red .tooltip-inner { background:#ff4d4d!important; color:white!important; font-weight:bold; }
+    .tooltip-orange .tooltip-inner { background:#ffa500!important; color:black!important; font-weight:bold; }
+    .tooltip-green .tooltip-inner { background:#28a745!important; color:white!important; font-weight:bold; }
+  </style>
+
+  <title>Supermarket App</title>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <%- include('partials/adminnavbar') %>
+
+  <!-- MAIN CONTENT -->
+  <div class="container mt-3">
+    <p>Welcome, <%= user.username %> (<%= user.role %>)</p>
+
+    <div class="text-center mb-3">
+      <h2>Products from Supermarket App Database</h2>
+    </div>
+
+    <!-- SEARCH + FILTER -->
+    <div class="row g-2 mt-3 mb-3">
+      <div class="col-md-5">
+        <input type="text" class="form-control" id="searchInput" placeholder="Search by product name...">
+      </div>
+
+      <div class="col-md-3">
+        <select class="form-select" name="categoryId" onchange="window.location='?categoryId=' + this.value">
+          <option value="">All categories</option>
+
+          <% if (categories) { %>
+            <% categories.forEach(c => { %>
+              <option value="<%= c.id %>" <%= (selectedCategoryId == c.id) ? 'selected' : '' %>>
+                <%= c.name %>
+              </option>
+            <% }) %>
+          <% } %>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <a href="/inventory" class="btn btn-secondary">Reset</a>
+      </div>
+    </div>
+
+    <!-- ⭐ BULK RESTOCK CONTROLS -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div>
+        <input type="checkbox" id="selectAll">
+        <label for="selectAll" class="ms-1">Select all</label>
+      </div>
+
+      <div class="d-flex align-items-center">
+        <input type="number" id="restockAmount" min="1" class="form-control form-control-sm me-2"
+               style="width: 120px;" placeholder="Restock +qty">
+        <button class="btn btn-sm btn-primary" id="bulkRestockBtn">
+          Bulk Restock
+        </button>
+      </div>
+    </div>
+
+    <!-- PRODUCT TABLE -->
+    <table class="table table-hover small text-center">
+      <thead>
+        <tr>
+          <th width="40">Lvl</th>
+          <th width="120">Product Name</th>
+          <th width="120">Category</th>
+          <th width="100">Image</th>
+          <th width="60">Qty</th>
+          <th width="60">Price</th>
+          <th width="60">Edit</th>
+          <th width="60">Delete</th>
+        </tr>
+      </thead>
+
+      <tbody id="productTableBody">
+        <% products.forEach(p => { %>
+
+          <% 
+            let circleColor = "green";
+            let tooltipClass = "tooltip-green";
+            let stockText = "Stock level: GOOD";
+
+            if (p.quantity === 0) {
+              circleColor = "red";
+              tooltipClass = "tooltip-red";
+              stockText = "Stock level: OUT OF STOCK";
+            } else if (p.quantity <= 20) {
+              circleColor = "orange";
+              tooltipClass = "tooltip-orange";
+              stockText = "Stock level: LOW";
+            }
+          %>
+
+          <tr id="row-<%= p.id %>">
+
+            <td>
+              <span data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-custom-class="<%= tooltipClass %>"
+                data-bs-title="<%= stockText %>"
+                style="display:inline-block;width:14px;height:14px;border-radius:50%;background:<%= circleColor %>;cursor:pointer;">
+              </span>
+
+              <div class="form-check mt-1">
+                <input class="form-check-input select-product" type="checkbox" value="<%= p.id %>">
+              </div>
+            </td>
+
+            <td><a href="/product/<%= p.id %>"><%= p.productName %></a></td>
+            <td><%= p.categoryName || "Uncategorised" %></td>
+            <td><img src="/images/<%= p.image %>" width="20%"></td>
+            <td class="qty" id="qty-<%= p.id %>"><%= p.quantity %></td>
+            <td>$<%= p.price.toFixed(2) %></td>
+            <td><a href="/updateProduct/<%= p.id %>">Edit</a></td>
+            <td>
+              <a href="/deleteProduct/<%= p.id %>"
+                onclick="return confirm('Are you sure you want to delete this product?')">
+                Delete
+              </a>
+            </td>
+          </tr>
+
+        <% }) %>
+      </tbody>
+    </table>
+
+  </div>
+
+<script>
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+/* -------------------------
+   SEARCH BAR (CONTAINS, NOT STARTSWITH)
+-------------------------- */
+const searchInput = document.getElementById("searchInput");
+const rows = [...document.querySelectorAll("#productTableBody tr")];
+
+searchInput.addEventListener("input", () => {
+  const text = searchInput.value.trim().toLowerCase();
+
+  rows.forEach(row => {
+    const nameCell = row.querySelector("td:nth-child(2)");
+    const name = nameCell.innerText.trim().toLowerCase();
+    row.style.display = name.includes(text) ? "" : "none";
+  });
+});
+
+/* -------------------------
+   SELECT ALL
+-------------------------- */
+const selectAll = document.getElementById("selectAll");
+const productCheckboxes = document.querySelectorAll(".select-product");
+
+selectAll.addEventListener("change", () => {
+  productCheckboxes.forEach(cb => cb.checked = selectAll.checked);
+});
+
+/* -------------------------
+   ⭐ BULK RESTOCK (AJAX)
+-------------------------- */
+document.getElementById("bulkRestockBtn").addEventListener("click", async () => {
+  const amount = parseInt(document.getElementById("restockAmount").value);
+  const selected = [...document.querySelectorAll(".select-product:checked")]
+                    .map(cb => cb.value);
+
+  if (selected.length === 0) return alert("No products selected.");
+  if (!amount || amount < 1) return alert("Enter a valid quantity.");
+
+  const res = await fetch("/inventory/bulk-restock", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: selected, amount })
+  });
+
+  const data = await res.json();
+  if (!data.success) return alert("Error: " + data.message);
+
+  // LIVE UPDATE quantities
+  selected.forEach(id => {
+    const qtyCell = document.getElementById("qty-" + id);
+    qtyCell.innerText = parseInt(qtyCell.innerText) + amount;
+  });
+
+  alert("Restock successful!");
+});
+</script>
+
+</body>
+</html>
