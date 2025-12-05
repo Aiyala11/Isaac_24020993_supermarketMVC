@@ -31,22 +31,22 @@ db.connect((err) => {
     // Define products with correct images
     const products = [
         // Fruits & Vegetables
-        { name: 'Apples', price: 2.99, qty: 50, category: 'Groceries', image: 'apples.png' },
-        { name: 'Bananas', price: 1.49, qty: 80, category: 'Groceries', image: 'bananas.png' },
-        { name: 'Broccoli', price: 3.49, qty: 30, category: 'Groceries', image: 'broccoli.png' },
-        { name: 'Tomatoes', price: 2.49, qty: 40, category: 'Groceries', image: 'tomatoes.png' },
+        { name: 'Apples', price: 4.99, qty: 50, category: 'Groceries', image: 'apples.png' },
+        { name: 'Bananas', price: 3.49, qty: 80, category: 'Groceries', image: 'bananas.png' },
+        { name: 'Broccoli', price: 5.99, qty: 30, category: 'Groceries', image: 'broccoli.png' },
+        { name: 'Tomatoes', price: 4.49, qty: 40, category: 'Groceries', image: 'tomatoes.png' },
 
         // Dairy & Eggs
-        { name: 'Milk', price: 3.50, qty: 50, category: 'Dairy', image: 'milk.png' },
-        { name: 'Eggs', price: 5.00, qty: 60, category: 'Dairy', image: 'Pasareggs.png' },
+        { name: 'Milk', price: 6.99, qty: 50, category: 'Dairy', image: 'milk.png' },
+        { name: 'Eggs', price: 8.99, qty: 60, category: 'Dairy', image: 'Pasareggs.png' },
 
         // Bakery
-        { name: 'Bread', price: 2.00, qty: 45, category: 'Bakery', image: 'bread.png' },
-        { name: 'White Bread', price: 2.50, qty: 35, category: 'Bakery', image: 'gardeniawhitebreadjumbo.png' },
+        { name: 'Bread', price: 4.99, qty: 45, category: 'Bakery', image: 'bread.png' },
+        { name: 'White Bread', price: 5.49, qty: 35, category: 'Bakery', image: 'gardeniawhitebreadjumbo.png' },
 
         // Beverages
-        { name: 'Ribenna', price: 3.99, qty: 40, category: 'Beverages', image: 'ribenna.png' },
-        { name: 'Green Tea', price: 4.50, qty: 25, category: 'Beverages', image: 'greentea.png' },
+        { name: 'Ribenna', price: 5.99, qty: 40, category: 'Beverages', image: 'ribenna.png' },
+        { name: 'Green Tea', price: 7.99, qty: 25, category: 'Beverages', image: 'greentea.png' },
 
         // Snacks & Others
         { name: 'Pringles', price: 2.99, qty: 55, category: 'Snacks', image: 'pringlesog.png' },
