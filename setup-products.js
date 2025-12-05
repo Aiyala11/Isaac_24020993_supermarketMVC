@@ -45,8 +45,8 @@ db.connect((err) => {
         { name: 'White Bread', price: 5.49, qty: 35, category: 'Bakery', image: 'gardeniawhitebreadjumbo.png' },
 
         // Beverages
-        { name: 'Ribenna', price: 5.99, qty: 40, category: 'Beverages', image: 'ribenna.png' },
-        { name: 'Green Tea', price: 7.99, qty: 25, category: 'Beverages', image: 'greentea.png' },
+        { name: 'Ribenna', price: 2.49, qty: 40, category: 'Beverages', image: 'ribenna.png' },
+        { name: 'Green Tea', price: 2.49, qty: 25, category: 'Beverages', image: 'greentea.png' },
 
         // Snacks & Others
         { name: 'Pringles', price: 2.99, qty: 55, category: 'Snacks', image: 'pringlesog.png' },
