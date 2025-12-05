@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Profile - Isaac's Supermarket</title>
+  <style>
+    body { background: linear-gradient(180deg, #f8fff4 0%, #f0f5ef 100%); font-family: 'Poppins', 'Segoe UI', sans-serif; }
+    .profile-hero { background: #0f5132; color: #fff; border-radius: 18px; padding: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+    .profile-hero .badge { background: rgba(255,255,255,0.15); }
+    .profile-card { border: none; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.07); }
+    .profile-card .card-header { background: #f8fff4; border-bottom: 1px solid #e6f0e4; }
+    .form-control { border-radius: 12px; padding: 12px; }
+    .form-label { font-weight: 600; color: #0f3622; }
+    .chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: #e8f5e9; color: #0f5132; font-weight: 600; }
+    .chip i { color: #146c43; }
+    .shadow-soft { box-shadow: 0 8px 26px rgba(0,0,0,0.08); }
+    .change-indicator { display: none; padding: 12px 16px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 12px; margin-top: 16px; color: #856404; font-weight: 600; align-items: center; gap: 8px; }
+    .change-indicator.show { display: flex; }
+    .validation-alert { padding: 12px 16px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 12px; color: #721c24; font-weight: 600; display: none; align-items: center; gap: 8px; margin-top: 12px; }
+    .validation-alert.show { display: flex; }
+  </style>
+</head>
+<body>
+
+  <% if (user && user.role === 'admin') { %>
+    <%- include('partials/adminnavbar') %>
+  <% } else { %>
+    <%- include('partials/usernavbar') %>
+  <% } %>
+
+  <!-- Success Toast -->
+  <% if (typeof messages !== 'undefined' && messages && messages.length > 0) { %>
+    <div id="successToast" class="position-fixed top-0 end-0 m-3" style="z-index: 9999; display: block;">
+      <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-bottom: 0;">
+        <i class="bi bi-check-circle"></i>
+        <span><%= messages[0] %></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    </div>
+    <script>
+      setTimeout(() => {
+        const toast = document.getElementById('successToast');
+        if (toast) toast.style.display = 'none';
+      }, 4000);
+    </script>
+  <% } %>
+
+  <div class="container my-4">
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="profile-hero h-100">
+          <div class="d-flex align-items-start justify-content-between mb-3">
+            <div>
+              <div class="text-white-50 small">Signed in as</div>
+              <h3 class="mb-1"><%= user.username %></h3>
+              <div class="chip mt-1">
+                <i class="bi bi-shield-check"></i>
+                <%= user.role === 'admin' ? 'Administrator' : 'Member' %>
+              </div>
+            </div>
+            <div class="rounded-circle bg-white text-success d-flex align-items-center justify-content-center" style="width:58px; height:58px;">
+              <i class="bi bi-person-fill fs-3"></i>
+            </div>
+          </div>
+
+          <p class="mb-2"><i class="bi bi-envelope-open"></i> <%= user.email %></p>
+          <p class="mb-3">
+            <i class="bi bi-geo-alt"></i>
+            <%= user.address && user.address.trim() !== '' ? user.address : 'Add your delivery address to speed up checkout' %>
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge bg-light text-dark shadow-soft text-wrap">
+              <i class="bi bi-calendar3 text-success"></i>
+              Joined <%= user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'recently' %>
+            </span>
+            <% if (user.contact) { %>
+              <span class="badge bg-light text-dark shadow-soft text-wrap">
+                <i class="bi bi-telephone text-success"></i> <%= user.contact %>
+              </span>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <div class="card profile-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="mb-0">Profile &amp; Delivery</h5>
+              <small class="text-muted">Keep your details updated for faster checkout</small>
+            </div>
+            <a href="/orders" class="btn btn-outline-success btn-sm"><i class="bi bi-receipt"></i> Order History</a>
+          </div>
+          <div class="card-body">
+
+            <!-- Messages handled by toast below -->
+
+            <form method="POST" action="/profile" id="profileForm" onsubmit="return validateProfileChange()">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label" for="username">Name</label>
+                  <input class="form-control" id="username" name="username" value="<%= user.username %>" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="email">Email</label>
+                  <input class="form-control" type="email" id="email" name="email" value="<%= user.email %>" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="contact">Contact</label>
+                  <input class="form-control" id="contact" name="contact" placeholder="e.g. +65 8888 8888" value="<%= user.contact || '' %>">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="address">Delivery Address</label>
+                  <input class="form-control" id="address" name="address" placeholder="Street, unit, postal code" value="<%= user.address || '' %>">
+                </div>
+              </div>
+
+              <div class="d-flex flex-wrap gap-2 mt-4">
+                <button class="btn btn-success px-4" type="submit" id="saveBtn"><i class="bi bi-save"></i> Save changes</button>
+                <a class="btn btn-outline-secondary px-3" href="<%= user.role === 'admin' ? '/inventory' : '/shopping' %>">
+                  <i class="bi bi-arrow-left"></i> Back to dashboard
+                </a>
+              </div>
+              <div id="changeIndicator" class="change-indicator">
+                <i class="bi bi-exclamation-circle"></i>
+                <span>You have unsaved changes</span>
+              </div>
+              <div id="validationAlert" class="validation-alert">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="validationMessage">No changes made. Please update at least one field.</span>
+              </div>
+            </form>
+
+            <script>
+              const originalData = {
+                username: '<%= user.username %>',
+                email: '<%= user.email %>',
+                contact: '<%= user.contact || '' %>',
+                address: '<%= user.address || '' %>'
+              };
+
+              const inputs = document.querySelectorAll('#profileForm input');
+              inputs.forEach(input => {
+                input.addEventListener('change', showChangeIndicator);
+                input.addEventListener('input', showChangeIndicator);
+              });
+
+              function showChangeIndicator() {
+                const indicator = document.getElementById('changeIndicator');
+                const hasChanges = 
+                  document.getElementById('username').value !== originalData.username ||
+                  document.getElementById('email').value !== originalData.email ||
+                  document.getElementById('contact').value !== originalData.contact ||
+                  document.getElementById('address').value !== originalData.address;
+                
+                indicator.classList.toggle('show', hasChanges);
+              }
+
+              function validateProfileChange() {
+                const username = document.getElementById('username').value;
+                const email = document.getElementById('email').value;
+                const contact = document.getElementById('contact').value;
+                const address = document.getElementById('address').value;
+
+                // Check if anything changed
+                const hasChanges = 
+                  username !== originalData.username ||
+                  email !== originalData.email ||
+                  contact !== originalData.contact ||
+                  address !== originalData.address;
+
+                if (!hasChanges) {
+                  const alert = document.getElementById('validationAlert');
+                  alert.classList.add('show');
+                  setTimeout(() => alert.classList.remove('show'), 3000);
+                  return false;
+                }
+
+                return true;
+              }
+            </script>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
