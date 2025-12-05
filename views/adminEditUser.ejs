@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <title>Edit User - Isaac's Supermarket</title>
+  <style>
+    body { background: linear-gradient(135deg, #e8f5eb 0%, #f1f8f4 100%); font-family: 'Sora','Inter','Segoe UI',sans-serif; min-height: 100vh; padding: 2rem 1rem; }
+    .form-container { max-width: 600px; margin: 0 auto; }
+    .form-box { background: white; border-radius: 16px; padding: 40px; box-shadow: 0 12px 35px rgba(0,0,0,0.08); border: 1px solid #e8f1eb; }
+    .form-header { text-align: center; margin-bottom: 32px; }
+    .form-header h1 { font-size: 28px; font-weight: 700; color: #0f5132; margin-bottom: 8px; }
+    .form-header p { color: #666; font-size: 14px; margin: 0; }
+    .form-control { border-radius: 12px; padding: 12px 16px; height: 48px; border: 1px solid #dce7dd; font-size: 15px; }
+    .form-control:focus { border-color: #28a745; box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1); }
+    .form-select { border-radius: 12px; padding: 12px 16px; border: 1px solid #dce7dd; font-size: 15px; }
+    .form-select:focus { border-color: #28a745; box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1); }
+    label { font-weight: 600; color: #2d4737; font-size: 14px; margin-bottom: 8px; }
+    .btn-submit { background: #28a745; border: none; border-radius: 12px; padding: 12px 24px; font-weight: 700; height: 48px; font-size: 16px; transition: all 0.3s; }
+    .btn-submit:hover { background: #20c997; transform: translateY(-2px); }
+    .btn-cancel { background: #6c757d; border: none; border-radius: 12px; padding: 12px 24px; font-weight: 700; height: 48px; font-size: 16px; transition: all 0.3s; }
+    .btn-cancel:hover { background: #5a6268; transform: translateY(-2px); }
+    .btn-back-link { color: #28a745; text-decoration: none; font-weight: 600; }
+    .btn-back-link:hover { text-decoration: underline; }
+    .alert { border-radius: 12px; border: none; margin-bottom: 24px; }
+    .user-info { background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 24px; border-left: 4px solid #28a745; }
+    .user-info p { margin: 0; font-size: 14px; color: #666; }
+    .user-info strong { color: #0f5132; }
+    .change-indicator { display: none; padding: 12px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 12px; margin-top: 16px; color: #856404; font-weight: 600; }
+    .change-indicator.show { display: flex; align-items: center; gap: 8px; }
+    .success-toast { position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 14px 20px; border-radius: 12px; box-shadow: 0 8px 24px rgba(40, 167, 69, 0.3); z-index: 9999; display: none; align-items: center; gap: 10px; animation: slideIn 0.3s ease-out; }
+    .success-toast.show { display: flex; }
+    @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @media (max-width: 575px) { .form-box { padding: 24px; } .form-header h1 { font-size: 24px; } }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/adminnavbar') %>
+
+  <!-- Success Toast -->
+  <% if (typeof messages !== 'undefined' && messages && messages.length > 0) { %>
+    <div id="successToast" class="success-toast show">
+      <i class="bi bi-check-circle"></i>
+      <span id="toastMessage"><%= messages[0] %></span>
+    </div>
+    <script>
+      setTimeout(() => {
+        const toast = document.getElementById('successToast');
+        if (toast) toast.classList.remove('show');
+      }, 4000);
+    </script>
+  <% } %>
+
+  <div class="form-container">
+    <div class="form-box">
+      <div class="form-header">
+        <h1><i class="bi bi-person-check"></i> Edit User</h1>
+        <p>Update user information and role</p>
+      </div>
+
+      <!-- USER INFO -->
+      <div class="user-info">
+        <p><strong>User ID:</strong> #<%= user.id %></p>
+        <p><strong>Account Created:</strong> <%= new Date(user.createdAt).toLocaleDateString() %></p>
+      </div>
+
+      <!-- ERROR MESSAGES -->
+      <% if (errors && errors.length > 0) { %>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+          <% errors.forEach(function(error) { %>
+            <p class="mb-1"><%= error %></p>
+          <% }); %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      <% } %>
+
+      <!-- SUCCESS MESSAGES - Hidden, displayed via toast -->
+      <% if (messages && messages.length > 0) { %>
+        <!-- Success message will show in top-right toast -->
+      <% } %>
+
+      <!-- FORM -->
+      <form id="editUserForm" action="/admin/users/<%= user.id %>" method="POST" onsubmit="return validateUserChange()">
+        <div class="mb-3">
+          <label for="username" class="form-label">Username</label>
+          <input id="username" type="text" name="username" class="form-control" required value="<%= user.username %>">
+        </div>
+
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input id="email" type="email" name="email" class="form-control" required value="<%= user.email %>">
+        </div>
+
+        <div class="mb-3">
+          <label for="address" class="form-label">Address</label>
+          <input id="address" type="text" name="address" class="form-control" required value="<%= user.address %>">
+        </div>
+
+        <div class="mb-3">
+          <label for="contact" class="form-label">Contact Number</label>
+          <input id="contact" type="text" name="contact" class="form-control" required value="<%= user.contact %>">
+        </div>
+
+        <div class="mb-4">
+          <label for="role" class="form-label">Role</label>
+          <select id="role" name="role" class="form-select" required>
+            <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
+            <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
+          </select>
+          <small class="text-muted d-block mt-2">
+            <i class="bi bi-info-circle"></i> Change this to promote or demote the user
+          </small>
+        </div>
+
+        <!-- Change Indicator -->
+        <div id="changeIndicator" class="change-indicator">
+          <i class="bi bi-exclamation-circle"></i>
+          <span>You have unsaved changes</span>
+        </div>
+
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-between">
+          <button type="submit" class="btn btn-submit btn-success flex-sm-grow-1">
+            <i class="bi bi-check-lg"></i> Save Changes
+          </button>
+          <a href="/admin/users" class="btn btn-cancel btn-secondary flex-sm-grow-1">
+            <i class="bi bi-x-lg"></i> Cancel
+          </a>
+        </div>
+      </form>
+
+      <hr class="my-4">
+      <p class="text-center">
+        <a href="/admin/users" class="btn-back-link">
+          <i class="bi bi-arrow-left"></i> Back to User Management
+        </a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const originalData = {
+      username: '<%= user.username %>',
+      email: '<%= user.email %>',
+      address: '<%= user.address %>',
+      contact: '<%= user.contact %>',
+      role: '<%= user.role %>'
+    };
+
+    const inputs = document.querySelectorAll('#editUserForm input, #editUserForm select');
+    inputs.forEach(input => {
+      input.addEventListener('change', showChangeIndicator);
+      input.addEventListener('input', showChangeIndicator);
+    });
+
+    function showChangeIndicator() {
+      const indicator = document.getElementById('changeIndicator');
+      const hasChanges = 
+        document.getElementById('username').value !== originalData.username ||
+        document.getElementById('email').value !== originalData.email ||
+        document.getElementById('address').value !== originalData.address ||
+        document.getElementById('contact').value !== originalData.contact ||
+        document.getElementById('role').value !== originalData.role;
+      
+      indicator.classList.toggle('show', hasChanges);
+    }
+
+    function validateUserChange() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const address = document.getElementById('address').value;
+      const contact = document.getElementById('contact').value;
+      const role = document.getElementById('role').value;
+
+      const hasChanges = 
+        username !== originalData.username ||
+        email !== originalData.email ||
+        address !== originalData.address ||
+        contact !== originalData.contact ||
+        role !== originalData.role;
+
+      if (!hasChanges) {
+        showValidationAlert('No changes made. Please update at least one field.');
+        return false;
+      }
+
+      return true;
+    }
+
+    function showValidationAlert(message) {
+      const toast = document.getElementById('successToast');
+      const toastMessage = document.getElementById('toastMessage');
+      toastMessage.textContent = message;
+      toast.style.background = '#dc3545';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Show success toast if messages exist
+    const hasMessages = '<%= (messages && messages.length > 0) ? "true" : "false" %>' === 'true';
+    window.addEventListener('load', function() {
+      if (hasMessages) {
+        const toast = document.getElementById('successToast');
+        const toastMessage = document.getElementById('toastMessage');
+        toastMessage.textContent = '<%= messages ? messages[0] : "" %>';
+        toast.style.background = '#28a745';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 4000);
+      }
+    });
+  </script>
+
+</body>
+</html>
