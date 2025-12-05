@@ -98,6 +98,19 @@ const Product = {
             WHERE id IN (${placeholder})
         `;
         db.query(sql, [amount, ...ids], callback);
+    },
+
+    // Featured products for the home page
+    getFeatured(limit = 6, callback) {
+        const safeLimit = Number(limit) > 0 ? Number(limit) : 6;
+        const sql = `
+            SELECT p.*, c.name AS categoryName
+            FROM products p
+            LEFT JOIN categories c ON p.categoryId = c.id
+            ORDER BY p.createdAt DESC, p.id DESC
+            LIMIT ?
+        `;
+        db.query(sql, [safeLimit], callback);
     }
 };
 
