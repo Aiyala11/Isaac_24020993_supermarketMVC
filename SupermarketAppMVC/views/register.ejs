@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%- include('partials/head', { title: 'Register' }) %>
+  <body>
+    <%- include('partials/navbar', { brand: 'Supermarket & Fines' }) %>
+
+    <main class="container my-5">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+          <div class="card shadow-lg border-0">
+            <div class="card-body p-5">
+              <h2 class="card-title text-center mb-4">Create Your Account</h2>
+
+              <% if (messages && messages.length > 0) { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                  <% messages.forEach(msg => { %>
+                    <div><%= msg %></div>
+                  <% }) %>
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              <% } %>
+
+              <form action="/register" method="POST">
+                <div class="mb-3">
+                  <label for="username" class="form-label">Username</label>
+                  <input type="text" class="form-control" id="username" name="username" required
+                    value="<%= formData && formData.username ? formData.username : '' %>">
+                </div>
+
+                <div class="mb-3">
+                  <label for="email" class="form-label">Email Address</label>
+                  <input type="email" class="form-control" id="email" name="email" required
+                    value="<%= formData && formData.email ? formData.email : '' %>">
+                </div>
+
+                <div class="mb-3">
+                  <label for="password" class="form-label">Password</label>
+                  <input type="password" class="form-control" id="password" name="password" required>
+                  <small class="form-text text-muted">At least 6 characters</small>
+                </div>
+
+                <div class="mb-3">
+                  <label for="address" class="form-label">Address</label>
+                  <input type="text" class="form-control" id="address" name="address" required
+                    value="<%= formData && formData.address ? formData.address : '' %>">
+                </div>
+
+                <div class="mb-3">
+                  <label for="contact" class="form-label">Contact Number</label>
+                  <input type="tel" class="form-control" id="contact" name="contact" required
+                    value="<%= formData && formData.contact ? formData.contact : '' %>">
+                </div>
+
+                <div class="mb-4">
+                  <label for="role" class="form-label">Account Type</label>
+                  <select class="form-select" id="role" name="role" required>
+                    <option value="">Select a role</option>
+                    <option value="user" <% if (formData && formData.role === 'user') { %>selected<% } %>>Customer</option>
+                    <option value="admin" <% if (formData && formData.role === 'admin') { %>selected<% } %>>Admin</option>
+                  </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 btn-lg mb-3">Create Account</button>
+                
+                <div class="text-center">
+                  <p class="text-muted">Already have an account? <a href="/login" class="text-decoration-none">Login here</a></p>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <%- include('partials/footer') %>
+  </body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Your Fines</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <%- include('partials/navbar') %>
+    <main class="container mt-5">
+      <h2>Your Outstanding Fines</h2>
+      <% if (!fines || fines.length === 0) { %>
+        <div class="alert alert-success">You have no outstanding fines. Great!</div>
+      <% } else { %>
+        <div class="list-group">
+          <% fines.forEach(f => { %>
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h5 class="mb-1"><%= f.typeName || 'Fine' %></h5>
+                  <p class="mb-1 text-muted"><%= f.description %></p>
+                  <small class="text-secondary">Amount: <strong class="text-danger">$<%= Number(f.amount).toFixed(2) %></strong></small>
+                </div>
+                <% if (!cart.includes(f.fineId)) { %>
+                  <form method="post" action="/cart/add" class="d-inline">
+                    <input type="hidden" name="fineId" value="<%= f.fineId %>">
+                    <button type="submit" class="btn btn-sm btn-primary">Add to Cart</button>
+                  </form>
+                <% } else { %>
+                  <span class="badge bg-success">In Cart</span>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+      <% if (cart && cart.length > 0) { %>
+        <div class="mt-4">
+          <a href="/cart" class="btn btn-primary">View Cart (<%= cart.length %>)</a>
+        </div>
+      <% } %>
+    </main>
+  </body>
+</html>
