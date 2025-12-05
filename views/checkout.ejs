@@ -2,7 +2,7 @@
 
 <ul>
   <% items.forEach(i => { %>
-    <li><%= i.quantity %> × <%= i.productName %> — $<%= (i.quantity * i.price).toFixed(2) %></li>
+    <li><%= i.quantity %> × <%= i.productName %> — $<%= (i.quantity * Number(i.price)).toFixed(2) %></li>
   <% }) %>
 </ul>
 

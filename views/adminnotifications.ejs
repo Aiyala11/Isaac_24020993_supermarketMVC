@@ -4,8 +4,10 @@
   <meta charset="UTF-8">
   <title>Order Notifications</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
   <style>
+    body { background: #f6fbf6; font-family: 'Sora','Segoe UI',sans-serif; }
     .product-box {
       border: 1px solid #ddd;
       padding: 10px;
@@ -19,16 +21,7 @@
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-  <div class="container">
-    <a class="navbar-brand" href="/inventory">Supermarket App</a>
-    <div>
-      <a href="/inventory" class="nav-link d-inline text-light">Inventory</a>
-      <a href="/admin/orders" class="nav-link d-inline text-light">Orders</a>
-      <a href="/logout" class="nav-link d-inline text-light">Logout</a>
-    </div>
-  </div>
-</nav>
+<%- include('partials/adminnavbar') %>
 
 <div class="container">
   <h2 class="mb-4">Order Notifications</h2>

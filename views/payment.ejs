@@ -93,7 +93,7 @@
 
                             <td><%= item.quantity %></td>
 
-                            <td>$<%= (item.price * item.quantity).toFixed(2) %></td>
+                            <td>$<%= (Number(item.price) * item.quantity).toFixed(2) %></td>
                         </tr>
                     <% }) %>
                 </tbody>
