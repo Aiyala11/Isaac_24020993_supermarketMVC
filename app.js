@@ -3,6 +3,15 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
 const path = require('path');
+
+// Suppress the deprecated util.isArray warning from connect-flash
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+    if (warning.code !== 'DEP0044') {
+        console.warn(warning.name, warning.message);
+    }
+});
+
 const app = express();
 
 // Global error handlers
@@ -25,9 +34,12 @@ const ProductController = require('./controllers/ProductController');
 const CartController = require('./controllers/CartController');
 const PaymentController = require('./controllers/PaymentController');
 const OrderController = require('./controllers/OrderController');
+const AnalyticsController = require('./controllers/AnalyticsController');
 
-
+// Models used in routes
+const Category = require('./models/Category');
 const Order = require('./models/Order');
+const Product = require('./models/Product');
 
 // Multer Setup
 const storage = multer.diskStorage({
@@ -40,7 +52,7 @@ const upload = multer({ storage });
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: false }));
-app.use(express.json());   // ⭐ Required for AJAX JSON
+app.use(express.json());   // Allow JSON bodies for AJAX/chatbot
 
 // Sessions
 app.use(
@@ -54,13 +66,20 @@ app.use(
 
 app.use(flash());
 
-// ⭐ Make user available everywhere
+// Expose flash messages to all views as `messages` and `errors`
+app.use((req, res, next) => {
+    res.locals.messages = req.flash('success') || [];
+    res.locals.errors = req.flash('error') || [];
+    next();
+});
+
+// Make user available everywhere
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
     next();
 });
 
-// ⭐ Admin notification badge
+// Admin notification badge
 app.use((req, res, next) => {
     res.locals.orderCount = 0;
 
@@ -83,7 +102,42 @@ app.use((req, res, next) => {
    HOME PAGE
 -------------------------- */
 app.get('/', (req, res) => {
-    res.render('index');
+    const user = req.session.user || null;
+
+    // Show homepage for both guests and logged-in users
+    Category.getAll((catErr, categories = []) => {
+        if (catErr) {
+            console.error('Home category load error:', catErr);
+        }
+
+        Product.getFeatured(8, (prodErr, featuredRows = []) => {
+            if (prodErr) {
+                console.error('Home featured products error:', prodErr);
+            }
+
+            const fallbackProducts = [
+                { id: 'f1', productName: 'Fresh Apples', price: 3.5, image: 'apples.png', categoryName: 'Groceries' },
+                { id: 'f2', productName: 'Bananas Bunch', price: 2.2, image: 'bananas.png', categoryName: 'Groceries' },
+                { id: 'f3', productName: 'Gardenia Bread', price: 2.1, image: 'gardeniawhitebreadjumbo.png', categoryName: 'Bakery' },
+                { id: 'f4', productName: 'Broccoli Crown', price: 1.9, image: 'broccoli.png', categoryName: 'Groceries' },
+                { id: 'f5', productName: 'Organic Milk', price: 4.2, image: 'milk.png', categoryName: 'Dairy' },
+                { id: 'f6', productName: 'Tomatoes Pack', price: 3.0, image: 'tomatoes.png', categoryName: 'Groceries' }
+            ];
+
+            const featuredProducts = (prodErr || !featuredRows || featuredRows.length === 0)
+                ? fallbackProducts
+                : featuredRows;
+            const safeCategories = catErr ? [] : categories;
+
+            res.render('index', {
+                user,
+                categories: safeCategories,
+                featuredProducts,
+                messages: req.flash('success'),
+                errors: req.flash('error')
+            });
+        });
+    });
 });
 
 /* -------------------------
@@ -101,6 +155,18 @@ app.post(
     '/update-address',
     UserController.checkAuthenticated,
     UserController.updateAddress
+);
+
+app.get(
+    '/profile',
+    UserController.checkAuthenticated,
+    UserController.showProfile
+);
+
+app.post(
+    '/profile',
+    UserController.checkAuthenticated,
+    UserController.updateProfile
 );
 
 /* -------------------------
@@ -220,6 +286,63 @@ app.get(
 );
 
 /* -------------------------
+   ADMIN DASHBOARD
+-------------------------- */
+app.get(
+    '/admin/dashboard',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    OrderController.adminDashboard
+);
+
+/* -------------------------
+   ADMIN USER MANAGEMENT
+-------------------------- */
+app.get(
+    '/admin/users',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    UserController.adminListUsers
+);
+
+app.get(
+    '/admin/users/:id/edit',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    UserController.adminShowEditUser
+);
+
+app.post(
+    '/admin/users/:id',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    UserController.adminUpdateUser
+);
+
+app.get(
+    '/admin/users/:id/delete',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    UserController.adminDeleteUser
+);
+
+app.get(
+    '/admin/admins',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    (req, res) => {
+        res.render('comingSoon', { feature: 'Admin Management' });
+    }
+);
+
+app.get(
+    '/admin/analytics',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    AnalyticsController.showAnalytics
+);
+
+/* -------------------------
    ADMIN ORDER NOTIFICATIONS
 -------------------------- */
 app.get(
@@ -228,6 +351,7 @@ app.get(
     UserController.checkAdmin,
     OrderController.adminNotifications
 );
+
 
 /* -------------------------
    PAYMENT SUCCESS
@@ -299,9 +423,60 @@ app.post(
     ProductController.bulkRestock
 );
 
+/* -------------------------
+   ANALYTICS ROUTES
+-------------------------- */
+app.get(
+    '/admin/analytics',
+    UserController.checkAuthenticated,
+    UserController.checkAdmin,
+    AnalyticsController.showAnalytics
+);
+
+/* -------------------------
+   CHATBOT API
+-------------------------- */
+app.post('/api/chat', (req, res) => {
+    const userMessage = req.body.message.toLowerCase().trim();
+    let reply = '';
+
+    // Simple AI-like responses based on keywords
+    if (userMessage.includes('hello') || userMessage.includes('hi') || userMessage.includes('hey')) {
+        reply = 'Hello! 👋 Welcome to Isaac\'s Supermarket. How can I assist you today?';
+    } else if (userMessage.includes('product') || userMessage.includes('items')) {
+        reply = 'We offer a wide variety of fresh groceries, dairy, bakery items, and more! Visit our shopping page to browse all products.';
+    } else if (userMessage.includes('price') || userMessage.includes('cost') || userMessage.includes('how much')) {
+        reply = 'Product prices vary. Please check the shopping page for specific pricing on items you\'re interested in.';
+    } else if (userMessage.includes('order') || userMessage.includes('purchase')) {
+        reply = 'To place an order, add items to your cart from the shopping page and proceed to checkout. It\'s quick and easy!';
+    } else if (userMessage.includes('shipping') || userMessage.includes('delivery')) {
+        reply = 'We work to get your order to you as quickly as possible. Check your order history for delivery details.';
+    } else if (userMessage.includes('payment') || userMessage.includes('pay')) {
+        reply = 'We accept multiple payment methods during checkout. Your transactions are secure and encrypted.';
+    } else if (userMessage.includes('account') || userMessage.includes('profile')) {
+        reply = 'You can manage your account from your profile page. Update your address, contact info, and more!';
+    } else if (userMessage.includes('help') || userMessage.includes('support')) {
+        reply = 'I\'m here to help! Ask me about products, orders, shipping, or anything else. If you need more help, contact our support team.';
+    } else if (userMessage.includes('thank')) {
+        reply = 'You\'re welcome! 😊 Is there anything else I can help you with?';
+    } else if (userMessage.includes('bye') || userMessage.includes('goodbye')) {
+        reply = 'Goodbye! Thanks for shopping at Isaac\'s Supermarket. See you soon! 👋';
+    } else if (userMessage.length === 0) {
+        reply = 'Please type a message to get started!';
+    } else {
+        // Default response with helpful suggestions
+        reply = 'I\'m still learning! 🤖 Try asking me about: products, orders, shipping, payments, or your account.';
+    }
+
+    res.json({ reply });
+});
+
 
 /* -------------------------
    START SERVER
 -------------------------- */
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`\n✅ Server running on port ${PORT}`);
+    console.log(`🔗 Open your browser: http://localhost:${PORT}\n`);
+});
