@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <title><%= feature %> - Isaac's Supermarket</title>
+  <style>
+    body { background: linear-gradient(135deg, #e8f5eb 0%, #f1f8f4 100%); font-family: 'Sora','Inter','Segoe UI',sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .coming-soon-container { max-width: 600px; text-align: center; padding: 2rem; }
+    .coming-soon-box { background: white; border-radius: 16px; padding: 60px 40px; box-shadow: 0 12px 35px rgba(0,0,0,0.08); border: 1px solid #e8f1eb; }
+    .coming-soon-icon { font-size: 72px; color: #28a745; margin-bottom: 20px; }
+    .coming-soon-title { font-size: 32px; font-weight: 700; color: #0f5132; margin-bottom: 16px; }
+    .coming-soon-text { font-size: 16px; color: #666; margin-bottom: 32px; line-height: 1.6; }
+    .coming-soon-subtext { font-size: 14px; color: #999; margin-bottom: 32px; }
+    .btn-back { display: inline-block; padding: 12px 32px; background: #28a745; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.3s; }
+    .btn-back:hover { background: #20c997; transform: translateY(-2px); color: white; }
+    @media (max-width: 576px) { .coming-soon-box { padding: 40px 24px; } .coming-soon-title { font-size: 24px; } .coming-soon-icon { font-size: 56px; } }
+  </style>
+</head>
+<body>
+
+  <div class="coming-soon-container">
+    <div class="coming-soon-box">
+      <div class="coming-soon-icon">
+        <i class="bi bi-hourglass-split"></i>
+      </div>
+      <h1 class="coming-soon-title"><%= feature %></h1>
+      <p class="coming-soon-text">
+        This feature is currently in development and will be available soon!
+      </p>
+      <p class="coming-soon-subtext">
+        We're working hard to bring you this amazing new feature. Check back soon!
+      </p>
+      <a href="/admin/dashboard" class="btn-back">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>

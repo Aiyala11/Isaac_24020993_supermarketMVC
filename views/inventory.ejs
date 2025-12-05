@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      padding: 2rem 0;
+      margin-bottom: 2rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .page-header h1 {
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-header p {
+      font-size: 0.95rem;
+      opacity: 0.95;
+    }
+
+    .filter-section {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      margin-bottom: 2rem;
+    }
+
+    .filter-section .form-control,
+    .filter-section .form-select {
+      border-color: #dee2e6;
+      border-radius: 0.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .filter-section .form-control:focus,
+    .filter-section .form-select:focus {
+      border-color: #28a745;
+      box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+
+    .bulk-restock-section {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      margin-bottom: 2rem;
+      border-left: 4px solid #28a745;
+    }
+
+    .inventory-table {
+      background: white;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .inventory-table thead {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      font-weight: 600;
+    }
+
+    .inventory-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+      transition: all 0.2s ease;
+    }
+
+    .inventory-table tbody tr:hover {
+      background-color: #f8f9fa;
+      box-shadow: inset 0 0 10px rgba(40, 167, 69, 0.05);
+    }
+
+    .product-img {
+      max-width: 50px;
+      height: auto;
+      border-radius: 0.5rem;
+      border: 1px solid #e9ecef;
+      object-fit: cover;
+    }
+
+    .status-badge {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-badge.good {
+      background-color: #28a745;
+    }
+
+    .status-badge.low {
+      background-color: #ffc107;
+    }
+
+    .status-badge.critical {
+      background-color: #dc3545;
+    }
+
+    .tooltip-red .tooltip-inner { background: #dc3545 !important; color: white !important; font-weight: bold; }
+    .tooltip-orange .tooltip-inner { background: #ffc107 !important; color: black !important; font-weight: bold; }
+    .tooltip-green .tooltip-inner { background: #28a745 !important; color: white !important; font-weight: bold; }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+
+    .action-buttons a {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      border-radius: 0.4rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .action-buttons .edit-btn {
+      background-color: #0dcaf0;
+      color: white;
+    }
+
+    .action-buttons .edit-btn:hover {
+      background-color: #0bb5e3;
+      transform: translateY(-2px);
+    }
+
+    .action-buttons .delete-btn {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .action-buttons .delete-btn:hover {
+      background-color: #c82333;
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background-color: #28a745;
+      border-color: #28a745;
+    }
+
+    .btn-primary:hover {
+      background-color: #218838;
+      border-color: #218838;
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+      border-color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background-color: #5a6268;
+      border-color: #5a6268;
+    }
+
+    @media (max-width: 768px) {
+      .inventory-table {
+        font-size: 0.85rem;
+      }
+      
+      .product-img {
+        max-width: 35px;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .action-buttons a {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+
+  <title>Inventory - Supermarket Admin</title>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <%- include('partials/adminnavbar') %>
+
+  <!-- SUCCESS TOAST NOTIFICATION -->
+  <% if (typeof messages !== 'undefined' && messages && messages.length > 0) { %>
+    <div id="successToast" class="position-fixed top-0 end-0 m-3" style="z-index: 9999;">
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle"></i>
+        <% messages.forEach(msg => { %>
+          <%= msg %><br>
+        <% }); %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    </div>
+  <% } %>
+
+  <!-- PAGE HEADER -->
+  <div class="container-fluid mt-4 px-4">
+    <div class="page-header">
+      <div class="container-fluid">
+        <h1><i class="bi bi-boxes"></i> Inventory Management</h1>
+        <p>Manage your product stock and details</p>
+      </div>
+    </div>
+
+    <!-- SEARCH + FILTER SECTION -->
+    <div class="filter-section">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="searchInput" class="form-label fw-500">Search Products</label>
+          <input type="text" class="form-control form-control-lg" id="searchInput" placeholder="🔍 Search by product name...">
+        </div>
+
+        <div class="col-md-4">
+          <label for="categoryFilter" class="form-label fw-500">Filter by Category</label>
+          <select class="form-select form-select-lg" id="categoryFilter" name="categoryId">
+            <option value="">All Categories</option>
+
+            <% if (categories) { %>
+              <% categories.forEach(c => { %>
+                <option value="<%= c.id %>" <%= (selectedCategoryId == c.id) ? 'selected' : '' %>>
+                  <%= c.name %>
+                </option>
+              <% }) %>
+            <% } %>
+          </select>
+        </div>
+
+        <div class="col-md-2 d-flex align-items-end">
+          <a href="/inventory" class="btn btn-secondary w-100">Reset Filters</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- BULK RESTOCK SECTION -->
+    <div class="bulk-restock-section">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h5 class="mb-0"><i class="bi bi-bag-plus"></i> Bulk Restock Products</h5>
+          <small class="text-muted">Select products and restock them in bulk</small>
+        </div>
+        <div class="col-md-6">
+          <div class="row g-2">
+            <div class="col-auto">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAll" style="cursor: pointer;">
+                <label class="form-check-label fw-500" for="selectAll" style="cursor: pointer;">
+                  Select All
+                </label>
+              </div>
+            </div>
+            <div class="col-auto ms-auto">
+              <input type="number" id="restockAmount" min="1" class="form-control form-control-sm me-2"
+                     placeholder="Enter quantity" style="width: 150px; display: inline-block;">
+              <button class="btn btn-sm btn-success" id="bulkRestockBtn">
+                <i class="bi bi-plus-lg"></i> Restock
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVENTORY TABLE -->
+    <div class="inventory-table table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th width="60" class="text-center"><i class="bi bi-exclamation-circle"></i></th>
+            <th width="200">Product Name</th>
+            <th width="140">Category</th>
+            <th width="100" class="text-center">Image</th>
+            <th width="80" class="text-center">Stock</th>
+            <th width="100" class="text-center">Price</th>
+            <th width="140" class="text-center">Actions</th>
+          </tr>
+        </thead>
+
+        <tbody id="productTableBody">
+          <% products.forEach(p => { %>
+
+            <% 
+              let circleColor = "good";
+              let tooltipClass = "tooltip-green";
+              let stockText = "Stock level: Good";
+              let stockBadge = "✓ Good";
+
+              if (p.quantity === 0) {
+                circleColor = "critical";
+                tooltipClass = "tooltip-red";
+                stockText = "Stock level: Out of Stock";
+                stockBadge = "✗ Out";
+              } else if (p.quantity <= 20) {
+                circleColor = "low";
+                tooltipClass = "tooltip-orange";
+                stockText = "Stock level: Low";
+                stockBadge = "⚠ Low";
+              }
+            %>
+
+            <tr id="row-<%= p.id %>" class="align-middle">
+
+              <td class="text-center">
+                <div class="form-check mb-0">
+                  <input class="form-check-input select-product" type="checkbox" value="<%= p.id %>" style="cursor: pointer;">
+                </div>
+              </td>
+
+              <td>
+                <a href="/product/<%= p.id %>" class="text-decoration-none text-dark fw-500 hover-link">
+                  <%= p.productName %>
+                </a>
+              </td>
+
+              <td>
+                <span class="badge bg-info text-dark">
+                  <%= p.categoryName || "Uncategorised" %>
+                </span>
+              </td>
+
+              <td class="text-center">
+                <img src="/images/<%= p.image || 'apples.png' %>" class="product-img" alt="<%= p.productName %>" onerror="this.src='/images/apples.png'">
+              </td>
+
+              <td class="text-center">
+                <div>
+                  <span class="qty fw-bold" id="qty-<%= p.id %>"><%= p.quantity %></span>
+                  <div style="margin-top: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <span style="<%= circleColor === 'good' ? 'color: #28a745;' : (circleColor === 'low' ? 'color: #ffc107;' : 'color: #dc3545;') %>">
+                      <%= circleColor === 'good' ? '✓ Good' : (circleColor === 'low' ? '⚠ Low' : '✗ Out') %>
+                    </span>
+                  </div>
+                </div>
+              </td>
+
+              <td class="text-center fw-500">
+                $<%= Number(p.price).toFixed(2) %>
+              </td>
+
+              <td>
+                <div class="action-buttons">
+                  <a href="/updateProduct/<%= p.id %>" class="edit-btn" title="Edit Product">
+                    <i class="bi bi-pencil"></i> Edit
+                  </a>
+                  <a href="/deleteProduct/<%= p.id %>" class="delete-btn" title="Delete Product"
+                    onclick="return confirm('Are you sure you want to delete this product?')">
+                    <i class="bi bi-trash"></i> Delete
+                  </a>
+                </div>
+              </td>
+            </tr>
+
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+<script>
+// Initialize tooltips
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+/* SEARCH BAR */
+const searchInput = document.getElementById("searchInput");
+const rows = [...document.querySelectorAll("#productTableBody tr")];
+
+searchInput.addEventListener("input", () => {
+  const text = searchInput.value.trim().toLowerCase();
+  rows.forEach(row => {
+    const nameCell = row.querySelector("td:nth-child(2)");
+    const name = nameCell.innerText.trim().toLowerCase();
+    row.style.display = name.includes(text) ? "" : "none";
+  });
+});
+
+/* CATEGORY FILTER */
+const categoryFilter = document.getElementById("categoryFilter");
+categoryFilter.addEventListener("change", () => {
+  if (categoryFilter.value) {
+    window.location = '?categoryId=' + categoryFilter.value;
+  } else {
+    window.location = '/inventory';
+  }
+});
+
+/* SELECT ALL */
+const selectAll = document.getElementById("selectAll");
+const productCheckboxes = document.querySelectorAll(".select-product");
+
+selectAll.addEventListener("change", () => {
+  productCheckboxes.forEach(cb => cb.checked = selectAll.checked);
+});
+
+/* BULK RESTOCK */
+document.getElementById("bulkRestockBtn").addEventListener("click", async () => {
+  const amount = parseInt(document.getElementById("restockAmount").value);
+  const selected = [...document.querySelectorAll(".select-product:checked")]
+                    .map(cb => cb.value);
+
+  if (selected.length === 0) {
+    alert("Please select at least one product to restock.");
+    return;
+  }
+  if (!amount || amount < 1) {
+    alert("Please enter a valid quantity.");
+    return;
+  }
+
+  const res = await fetch("/inventory/bulk-restock", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: selected, amount })
+  });
+
+  const data = await res.json();
+  if (!data.success) {
+    alert("Error: " + data.message);
+    return;
+  }
+
+  // Update quantities
+  selected.forEach(id => {
+    const qtyCell = document.getElementById("qty-" + id);
+    qtyCell.innerText = parseInt(qtyCell.innerText) + amount;
+  });
+
+  alert("✓ Restock successful! +" + amount + " items added.");
+  
+  // Reset
+  document.getElementById("restockAmount").value = "";
+  selectAll.checked = false;
+  productCheckboxes.forEach(cb => cb.checked = false);
+});
+</script>
+
+</body>
+</html>
