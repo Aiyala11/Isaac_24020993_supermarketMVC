@@ -23,7 +23,9 @@ const CartController = {
                     cartItems: items,
                     total,
                     user,
-                    cartCount
+                    cartCount,
+                    messages: req.flash('success'),
+                    errors: req.flash('error')
                 });
             });
         });
@@ -55,6 +57,9 @@ const CartController = {
 
                     Cart.addItem(cart.id, productId, finalDelta, (err) => {
                         if (err) throw err;
+
+                        // ⭐ Flash success message before redirecting
+                        req.flash('success', `${product.productName} added to cart!`);
 
                         // ⭐ Redirect back to shopping with message
                         res.redirect(
@@ -94,7 +99,11 @@ const CartController = {
             if (newQty > stock) newQty = stock;
 
             Cart.updateQuantity(itemId, newQty, (err) => {
-                if (err) throw err;
+                if (err) {
+                    req.flash('error', 'Failed to update quantity.');
+                    throw err;
+                }
+                req.flash('success', 'Quantity updated successfully.');
                 res.redirect('/cart');
             });
         });
@@ -103,7 +112,11 @@ const CartController = {
     // ⭐ Delete item
     deleteItem(req, res) {
         Cart.deleteItem(req.params.itemId, (err) => {
-            if (err) throw err;
+            if (err) {
+                req.flash('error', 'Failed to remove item from cart.');
+                throw err;
+            }
+            req.flash('success', 'Item removed from cart.');
             res.redirect('/cart');
         });
     },

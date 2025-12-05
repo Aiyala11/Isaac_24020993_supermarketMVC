@@ -29,7 +29,9 @@ const ProductController = {
             search,
             selectedCategoryId: categoryId,
             sort,
-            orderCount: res.locals.orderCount || 0
+            orderCount: res.locals.orderCount || 0,
+            messages: res.locals.messages || [],
+            errors: res.locals.errors || []
           });
         });
       });
@@ -38,17 +40,21 @@ const ProductController = {
     }
 
     // ---------- USER SHOPPING VIEW ----------
-    Category.getAll((err, categories) => {            // 🔹 NEW: load categories
+    Category.getAll((err, categories) => {            
       if (err) return res.status(500).send("Database error");
 
-      Product.getAll((err, products) => {             // (same logic as before)
+      Product.getAll((err, products) => {             
         if (err) return res.status(500).send("Database error");
+
+        // ⭐ ADD SUCCESS FLASH HERE
+        const successMsg = (req.flash("success") || [])[0] || null;
 
         if (!user) {
           return res.render('shopping', {
             products,
             user,
-            categories,                                // 🔹 pass to view
+            categories,   
+            success: successMsg,      // ⭐ SEND SUCCESS TO EJS
             added: req.query.added === "true",
             qty: req.query.qty || null,
             name: req.query.name || null,
@@ -66,7 +72,8 @@ const ProductController = {
             res.render('shopping', {
               products,
               user,
-              categories,                              // 🔹 pass to view
+              categories,
+              success: successMsg,      // ⭐ SEND SUCCESS TO EJS
               added: req.query.added === "true",
               qty: req.query.qty || null,
               name: req.query.name || null,
@@ -89,7 +96,7 @@ const ProductController = {
       if (err) return res.status(500).send("Database error");
       if (!product) return res.status(404).send("Product not found");
 
-      res.render('productDetails', {
+      res.render('product', {
         user: req.session.user,
         product,
         orderCount: res.locals.orderCount || 0
@@ -107,7 +114,8 @@ const ProductController = {
       res.render('addProduct', {
         categories,
         user: req.session.user,
-        orderCount: res.locals.orderCount || 0
+        orderCount: res.locals.orderCount || 0,
+        errors: req.flash('error')
       });
     });
   },
@@ -122,7 +130,11 @@ const ProductController = {
     const product = { productName, quantity, price, categoryId, image };
 
     Product.add(product, (err) => {
-      if (err) return res.status(500).send("Database error");
+      if (err) {
+        req.flash('error', 'Failed to add product. Please try again.');
+        return res.redirect('/addProduct');
+      }
+      req.flash('success', `Product "${productName}" added successfully!`);
       res.redirect('/inventory');
     });
   },
@@ -144,7 +156,8 @@ const ProductController = {
           product,
           categories,
           user: req.session.user,
-          orderCount: res.locals.orderCount || 0
+          orderCount: res.locals.orderCount || 0,
+          errors: req.flash('error')
         });
       });
     });
@@ -161,7 +174,11 @@ const ProductController = {
     const product = { productName, quantity, price, categoryId, image };
 
     Product.update(id, product, (err) => {
-      if (err) return res.status(500).send("Database error");
+      if (err) {
+        req.flash('error', 'Failed to update product. Please try again.');
+        return res.redirect(`/products/${id}/update`);
+      }
+      req.flash('success', `Product "${productName}" updated successfully!`);
       res.redirect('/inventory');
     });
   },
@@ -170,8 +187,13 @@ const ProductController = {
   // DELETE PRODUCT
   // ---------------------------------------------------
   delete(req, res) {
-    Product.delete(req.params.id, (err) => {
-      if (err) return res.status(500).send("Database error");
+    const productId = req.params.id;
+    Product.delete(productId, (err) => {
+      if (err) {
+        req.flash('error', 'Failed to delete product. Please try again.');
+        return res.redirect('/inventory');
+      }
+      req.flash('success', 'Product deleted successfully!');
       res.redirect('/inventory');
     });
   },
@@ -190,10 +212,9 @@ const ProductController = {
     Product.bulkRestock(ids, amount, (err) => {
         if (err) return res.json({ success: false, message: "Database error" });
 
-        return res.json({ success: true, message: "Restock successful!" });
+        return res.json({ success: true, message: `Successfully restocked ${ids.length} product(s) with +${amount} units!` });
     });
-  }
-  ,
+  },
 
   // ---------------------------------------------------
   // SHOW BULK RESTOCK PAGE (GET)

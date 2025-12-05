@@ -118,8 +118,8 @@ const PaymentController = {
                                             // Delete purchased items from cart
                                             const ids = toProcess.map(i => i.id);
                                             db.query(
-                                                'DELETE FROM cart_items WHERE id IN (?)',
-                                                [ids],
+                                                'DELETE FROM cart_items WHERE id IN (' + ids.map(() => '?').join(',') + ')',
+                                                ids,
                                                 (err4) => {
                                                     if (err4) throw err4;
 

@@ -1,4 +1,6 @@
 const Order = require('../models/Order');
+const User = require('../models/User');
+const Product = require('../models/Product');
 
 const OrderController = {
 
@@ -81,6 +83,76 @@ const OrderController = {
             res.render('adminnotifications', {
                 user,
                 orders: formatted
+            });
+        });
+    },
+
+    // ⭐ ADMIN DASHBOARD
+    adminDashboard(req, res) {
+        const user = req.session.user;
+
+        if (!user || user.role !== 'admin') {
+            return res.redirect('/shopping');
+        }
+
+        // Fetch all data in parallel
+        let stats = {
+            totalUsers: 0,
+            totalAdmins: 0,
+            totalProducts: 0,
+            lowStockCount: 0,
+            totalOrders: 0,
+            totalRevenue: 0
+        };
+
+        // Get users and admins count
+        User.getAll((errUsers, users) => {
+            if (!errUsers && users) {
+                stats.totalUsers = users.length;
+                stats.totalAdmins = users.filter(u => u.role === 'admin').length;
+            }
+
+            // Get products and low stock count
+            Product.getAll((errProducts, products) => {
+                if (!errProducts && products) {
+                    stats.totalProducts = products.length;
+                    stats.lowStockCount = products.filter(p => p.quantity <= 20).length;
+                }
+
+                // Get orders and revenue
+                Order.getAllOrdersWithUser((errOrders, orders) => {
+                    if (!errOrders && orders) {
+                        const uniqueOrders = [...new Set(orders.map(o => o.orderId))];
+                        stats.totalOrders = uniqueOrders.length;
+                        stats.totalRevenue = orders.reduce((sum, o) => sum + parseFloat(o.totalAmount || 0), 0) / uniqueOrders.length;
+                    }
+
+                    // Get recent orders for preview
+                    Order.getAllOrdersWithUser((errRecent, recentOrders) => {
+                        const orderMap = {};
+                        (recentOrders || []).forEach(row => {
+                            if (!orderMap[row.orderId]) {
+                                orderMap[row.orderId] = {
+                                    id: row.orderId,
+                                    username: row.username,
+                                    totalAmount: row.totalAmount,
+                                    status: row.status || 'Pending',
+                                    createdAt: row.createdAt
+                                };
+                            }
+                        });
+
+                        const recentList = Object.values(orderMap)
+                            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                            .slice(0, 5);
+
+                        res.render('adminDashboard', {
+                            user,
+                            stats,
+                            recentOrders: recentList
+                        });
+                    });
+                });
             });
         });
     }
