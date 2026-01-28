@@ -3,14 +3,21 @@ const db = require('../db');
 const Order = {
 
     // -------------------------------------------------------
-    // Create a new order
+    // Create a new order with currency and BNPL support
     // -------------------------------------------------------
-    createOrder(userId, totalAmount, paymentMethod, callback) {
+    createOrder(userId, totalAmount, paymentMethod, displayCurrency = 'SGD', bnplMonths = null, callback) {
+        // Handle legacy callback position
+        if (typeof displayCurrency === 'function') {
+            callback = displayCurrency;
+            displayCurrency = 'SGD';
+            bnplMonths = null;
+        }
+        
         const sql = `
-            INSERT INTO orders (userId, totalAmount, paymentMethod, createdAt, status)
-            VALUES (?, ?, ?, NOW(), 'Pending')
+            INSERT INTO orders (userId, totalAmount, paymentMethod, displayCurrency, bnplMonths, createdAt, status)
+            VALUES (?, ?, ?, ?, ?, NOW(), 'Pending')
         `;
-        db.query(sql, [userId, totalAmount, paymentMethod], (err, result) => {
+        db.query(sql, [userId, totalAmount, paymentMethod, displayCurrency, bnplMonths], (err, result) => {
             if (err) return callback(err);
             callback(null, result.insertId);
         });

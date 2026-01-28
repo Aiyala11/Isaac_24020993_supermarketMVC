@@ -3,6 +3,27 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const multer = require('multer');
 const path = require('path');
+const axios = require('axios');
+const bodyParser = require('body-parser');
+require('dotenv').config();
+
+// Initialize Stripe only if secret key is available
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+    const stripeModule = require('stripe');
+    stripe = stripeModule(process.env.STRIPE_SECRET_KEY);
+}
+
+// Initialize PayPal SDK if credentials are available
+const paypal = require('@paypal/checkout-server-sdk');
+let paypalClient = null;
+if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
+    const Environment = process.env.NODE_ENV === 'production'
+        ? paypal.core.LiveEnvironment
+        : paypal.core.SandboxEnvironment;
+    const paypalEnv = new Environment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET);
+    paypalClient = new paypal.core.PayPalHttpClient(paypalEnv);
+}
 
 // Suppress the deprecated util.isArray warning from connect-flash
 process.removeAllListeners('warning');
@@ -35,6 +56,7 @@ const CartController = require('./controllers/CartController');
 const PaymentController = require('./controllers/PaymentController');
 const OrderController = require('./controllers/OrderController');
 const AnalyticsController = require('./controllers/AnalyticsController');
+const netsService = require('./services/nets');
 
 // Models used in routes
 const Category = require('./models/Category');
@@ -52,7 +74,8 @@ const upload = multer({ storage });
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: false }));
-app.use(express.json());   // Allow JSON bodies for AJAX/chatbot
+app.use(express.json());
+app.use(bodyParser.json());
 
 // Sessions
 app.use(
@@ -275,6 +298,255 @@ app.post(
     UserController.checkAuthenticated,
     PaymentController.processPayment
 );
+
+/* -------------------------
+   NETS PAYMENT ROUTES
+-------------------------- */
+app.post(
+    '/generateNETSQR',
+    UserController.checkAuthenticated,
+    netsService.generateQrCode
+);
+
+app.get("/nets-qr/success", (req, res) => {
+    res.render('netsTxnSuccessStatus', { message: 'Transaction Successful!' });
+});
+
+app.get("/nets-qr/fail", (req, res) => {
+    res.render('netsTxnFailStatus', { message: 'Transaction Failed. Please try again.' });
+});
+
+// SSE endpoint for payment status polling
+app.get('/sse/payment-status/:txnRetrievalRef', async (req, res) => {
+    res.set({
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+    });
+
+    const txnRetrievalRef = req.params.txnRetrievalRef;
+    let pollCount = 0;
+    const maxPolls = 60; // 5 minutes if polling every 5s
+    let frontendTimeoutStatus = 0;
+
+    const interval = setInterval(async () => {
+        pollCount++;
+
+        try {
+            // Call the NETS query API
+            const response = await axios.post(
+                'https://sandbox.nets.openapipaas.com/api/v1/common/payments/nets-qr/query',
+                { txn_retrieval_ref: txnRetrievalRef, frontend_timeout_status: frontendTimeoutStatus },
+                {
+                    headers: {
+                        'api-key': process.env.API_KEY,
+                        'project-id': process.env.PROJECT_ID,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            console.log("Polling response:", response.data);
+            res.write(`data: ${JSON.stringify(response.data)}\n\n`);
+        
+            const resData = response.data.result.data;
+
+            // Check if payment is successful
+            if (resData.response_code == "00" && resData.txn_status === 1) {
+                // Payment success
+                res.write(`data: ${JSON.stringify({ success: true })}\n\n`);
+                clearInterval(interval);
+                res.end();
+            } else if (frontendTimeoutStatus == 1 && resData && (resData.response_code !== "00" || resData.txn_status === 2)) {
+                // Payment failure
+                res.write(`data: ${JSON.stringify({ fail: true, ...resData })}\n\n`);
+                clearInterval(interval);
+                res.end();
+            }
+
+        } catch (err) {
+            clearInterval(interval);
+            res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+            res.end();
+        }
+
+        // Timeout
+        if (pollCount >= maxPolls) {
+            clearInterval(interval);
+            frontendTimeoutStatus = 1;
+            res.write(`data: ${JSON.stringify({ fail: true, error: "Timeout" })}\n\n`);
+            res.end();
+        }
+    }, 5000);
+
+    req.on('close', () => {
+        clearInterval(interval);
+    });
+});
+
+/* -------------------------
+   STRIPE PAYMENT ROUTES
+-------------------------- */
+app.post('/create-stripe-checkout', UserController.checkAuthenticated, async (req, res) => {
+    if (!stripe) {
+        return res.redirect('/payment?error=stripe_not_configured');
+    }
+    
+    const total = parseFloat(req.body.cartTotal) || 0;
+    const currency = req.body.currency || 'SGD';
+    const bnplMonths = req.body.bnplMonths || null;
+    
+    // Store in session for order processing
+    req.session.paymentCurrency = currency;
+    req.session.paymentAmount = total;
+    req.session.bnplMonths = bnplMonths;
+    
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'sgd',
+                        product_data: {
+                            name: 'Supermarket Order',
+                            description: 'Payment for your supermarket order',
+                        },
+                        unit_amount: Math.round(total * 100),
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: 'payment',
+            success_url: `${req.protocol}://${req.get('host')}/stripe-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.protocol}://${req.get('host')}/payment`,
+        });
+        
+        res.redirect(session.url);
+    } catch (error) {
+        console.error('Stripe checkout error:', error);
+        res.redirect('/payment?error=stripe_checkout_failed');
+    }
+});
+
+app.get('/stripe-success', UserController.checkAuthenticated, async (req, res) => {
+    if (!stripe) {
+        return res.redirect('/payment?error=stripe_not_configured');
+    }
+    
+    try {
+        const session = await stripe.checkout.sessions.retrieve(req.query.session_id);
+        
+        if (session.payment_status === 'paid') {
+            const user = req.session.user;
+            const total = req.session.paymentAmount || 0;
+            const currency = req.session.paymentCurrency || 'SGD';
+            const bnplMonths = req.session.bnplMonths || null;
+            
+            // Create order in database
+            Order.createOrder(user.id, total, 'Stripe', (err, orderId) => {
+                if (err) {
+                    console.error('Order creation error:', err);
+                    return res.redirect('/payment?error=order_creation_failed');
+                }
+                
+                // Clear cart after successful order
+                req.session.cart = [];
+                
+                res.redirect('/payment-success?orderId=' + orderId);
+            });
+        } else {
+            res.redirect('/payment?error=payment_not_completed');
+        }
+    } catch (error) {
+        console.error('Stripe success error:', error);
+        res.redirect('/payment?error=stripe_verification_failed');
+    }
+});
+
+/* -------------------------
+   PAYPAL PAYMENT ROUTES
+-------------------------- */
+app.post('/create-paypal-order', UserController.checkAuthenticated, async (req, res) => {
+    if (!paypalClient) {
+        return res.status(400).json({ error: 'PayPal not configured' });
+    }
+    
+    const total = parseFloat(req.body.cartTotal) || 0;
+    const currency = req.body.currency || 'SGD';
+    const bnplMonths = req.body.bnplMonths || null;
+    
+    // Store in session
+    req.session.paymentCurrency = currency;
+    req.session.paymentAmount = total;
+    req.session.bnplMonths = bnplMonths;
+    
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer('return=representation');
+    request.requestBody({
+        intent: 'CAPTURE',
+        purchase_units: [
+            {
+                amount: {
+                    currency_code: 'SGD',
+                    value: total.toFixed(2),
+                },
+            },
+        ],
+        redirect_urls: {
+            return_url: `${req.protocol}://${req.get('host')}/paypal-return`,
+            cancel_url: `${req.protocol}://${req.get('host')}/payment`,
+        },
+    });
+
+    try {
+        const order = await paypalClient.execute(request);
+        const redirectUrl = order.result.links.find(link => link.rel === 'approve').href;
+        res.json({ id: order.result.id, redirectUrl: redirectUrl });
+    } catch (err) {
+        console.error('PayPal order creation error:', err);
+        res.status(500).json({ error: 'Failed to create PayPal order' });
+    }
+});
+
+app.get('/paypal-return', UserController.checkAuthenticated, async (req, res) => {
+    if (!paypalClient) {
+        return res.redirect('/payment?error=paypal_not_configured');
+    }
+    
+    const paypalOrderId = req.query.token;
+    const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+    request.requestBody({});
+
+    try {
+        const capture = await paypalClient.execute(request);
+        
+        if (capture.result.status === 'COMPLETED') {
+            const user = req.session.user;
+            const total = req.session.paymentAmount || 0;
+            const currency = req.session.paymentCurrency || 'SGD';
+            const bnplMonths = req.session.bnplMonths || null;
+            
+            // Create order
+            Order.createOrder(user.id, total, 'PayPal', (err, orderId) => {
+                if (err) {
+                    console.error('Order creation error:', err);
+                    return res.redirect('/payment?error=order_creation_failed');
+                }
+                
+                // Clear cart
+                req.session.cart = [];
+                
+                res.redirect('/payment-success?orderId=' + orderId);
+            });
+        } else {
+            res.redirect('/payment?error=paypal_payment_not_completed');
+        }
+    } catch (err) {
+        console.error('PayPal capture error:', err);
+        res.redirect('/payment?error=paypal_capture_failed');
+    }
+});
 
 /* -------------------------
    ORDER HISTORY

@@ -15,53 +15,90 @@ db.connect((err) => {
     }
     console.log('Connected to MySQL');
 
-    // Update or insert admin user with specified credentials
-    const email = 'peter@peter.com';
-    const password = '123456';
-    const username = 'peter';
-    const address = 'Admin Address';
-    const contact = '9876543210';
-
-    // First, try to update existing admin
-    db.query(
-        `UPDATE users SET email = ?, password = SHA1(?), username = ?, address = ?, contact = ? WHERE role = 'admin' LIMIT 1`,
-        [email, password, username, address, contact],
-        (err, result) => {
-            if (err) {
-                console.error('Error updating admin:', err.message);
-                db.end();
-                process.exit(1);
-                return;
-            }
-
-            if (result.affectedRows > 0) {
-                console.log('✓ Admin user updated successfully!');
-                console.log(`   Email: ${email}`);
-                console.log(`   Password: ${password}`);
-            } else {
-                // If no admin exists, create one
-                db.query(
-                    `INSERT INTO users (username, email, password, address, contact, role) 
-                     VALUES (?, ?, SHA1(?), ?, ?, 'admin')`,
-                    [username, email, password, address, contact],
-                    (err, result) => {
-                        if (err) {
-                            console.error('Error creating admin:', err.message);
-                            db.end();
-                            process.exit(1);
-                            return;
-                        }
-                        console.log('✓ Admin user created successfully!');
-                        console.log(`   Email: ${email}`);
-                        console.log(`   Password: ${password}`);
-                        db.end();
-                        process.exit(0);
-                    }
-                );
-            }
-
-            db.end();
-            process.exit(0);
+    // Define users to create/update
+    const users = [
+        {
+            username: 'peter',
+            email: 'peter@peter.com',
+            password: '123456',
+            address: 'Admin Address',
+            contact: '9876543210',
+            role: 'admin'
+        },
+        {
+            username: 'mary tan',
+            email: 'mary@mary.com',
+            password: '123456',
+            address: 'User Address',
+            contact: '9876543211',
+            role: 'user'
         }
-    );
+    ];
+
+    let completed = 0;
+
+    users.forEach((user) => {
+        // Check if user exists
+        db.query(
+            `SELECT id FROM users WHERE email = ?`,
+            [user.email],
+            (err, results) => {
+                if (err) {
+                    console.error(`Error checking user ${user.email}:`, err.message);
+                    completed++;
+                    if (completed === users.length) {
+                        db.end();
+                        process.exit(1);
+                    }
+                    return;
+                }
+
+                if (results.length > 0) {
+                    // Update existing user
+                    db.query(
+                        `UPDATE users SET username = ?, password = SHA1(?), address = ?, contact = ?, role = ? WHERE email = ?`,
+                        [user.username, user.password, user.address, user.contact, user.role, user.email],
+                        (err) => {
+                            if (err) {
+                                console.error(`Error updating ${user.email}:`, err.message);
+                            } else {
+                                console.log(`✓ Updated user: ${user.email}`);
+                                console.log(`   Username: ${user.username}`);
+                                console.log(`   Password: ${user.password}`);
+                                console.log(`   Role: ${user.role}`);
+                            }
+                            completed++;
+                            if (completed === users.length) {
+                                console.log('\n✓ All users set up successfully!');
+                                db.end();
+                                process.exit(0);
+                            }
+                        }
+                    );
+                } else {
+                    // Create new user
+                    db.query(
+                        `INSERT INTO users (username, email, password, address, contact, role) VALUES (?, ?, SHA1(?), ?, ?, ?)`,
+                        [user.username, user.email, user.password, user.address, user.contact, user.role],
+                        (err) => {
+                            if (err) {
+                                console.error(`Error creating ${user.email}:`, err.message);
+                            } else {
+                                console.log(`✓ Created user: ${user.email}`);
+                                console.log(`   Username: ${user.username}`);
+                                console.log(`   Password: ${user.password}`);
+                                console.log(`   Role: ${user.role}`);
+                            }
+                            completed++;
+                            if (completed === users.length) {
+                                console.log('\n✓ All users set up successfully!');
+                                db.end();
+                                process.exit(0);
+                            }
+                        }
+                    );
+                }
+            }
+        );
+    });
 });

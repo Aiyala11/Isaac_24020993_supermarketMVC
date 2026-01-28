@@ -1,42 +1,38 @@
 const mysql = require('mysql2');
 const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 // Read the SQL file
-const sql = fs.readFileSync('../C372_supermarketdb.sql', 'utf8');
+const sqlFilePath = path.join(__dirname, '..', 'C372_supermarketdb.sql');
+const sql = fs.readFileSync(sqlFilePath, 'utf8');
 
 // Create connection without database first
 const connection = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
+    password: process.env.DB_PASSWORD,
+    multipleStatements: true
 });
 
 connection.connect((err) => {
     if (err) {
         console.error('Connection error:', err);
-        return;
+        process.exit(1);
     }
     console.log('Connected to MySQL');
 
-    // Split SQL statements and execute them
-    const statements = sql.split(';').filter(s => s.trim());
-    let completed = 0;
-
-    statements.forEach((statement, index) => {
-        connection.query(statement, (err, results) => {
-            if (err) {
-                console.error(`Error executing statement ${index + 1}:`, err.message);
-            } else {
-                console.log(`✓ Statement ${index + 1} executed successfully`);
-            }
-            
-            completed++;
-            if (completed === statements.length) {
-                console.log('\n✓ Database setup completed!');
-                connection.end();
-                process.exit(0);
-            }
-        });
+    // Execute all SQL statements at once using multipleStatements
+    connection.query(sql, (err, results) => {
+        if (err) {
+            console.error('Error executing SQL:', err.message);
+            connection.end();
+            process.exit(1);
+        } else {
+            console.log('✓ Database setup completed successfully!');
+        }
+        
+        connection.end();
+        process.exit(0);
     });
 });

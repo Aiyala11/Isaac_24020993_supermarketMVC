@@ -59,6 +59,58 @@ const PaymentController = {
             }
         }
 
+        // NETS payment method - redirect to QR generation
+        if (paymentMethod === 'NETS QR') {
+            let selectedIds = [];
+            if (selectedItemsRaw) {
+                try {
+                    selectedIds = JSON.parse(selectedItemsRaw);
+                } catch (e) {
+                    selectedIds = [];
+                }
+            }
+
+            // Load user cart to calculate total
+            Cart.getOrCreateCart(user.id, (err, cart) => {
+                if (err) throw err;
+
+                Cart.getCartItems(cart.id, (err, items) => {
+                    if (err) throw err;
+
+                    // Items being purchased
+                    let toProcess = items;
+                    if (selectedIds.length > 0) {
+                        toProcess = items.filter(i => selectedIds.includes(String(i.id)));
+                    }
+
+                    if (toProcess.length === 0) {
+                        return res.redirect('/cart');
+                    }
+
+                    // Calculate total
+                    let total = 0;
+                    toProcess.forEach(i => total += i.quantity * i.price);
+
+                    // Store cart data in session for NETS callback
+                    req.session.pendingNETSOrder = {
+                        userId: user.id,
+                        items: toProcess,
+                        total: total,
+                        paymentMethod: paymentMethod,
+                        selectedItemsRaw: selectedItemsRaw
+                    };
+
+                    // Redirect to NETS QR generation
+                    res.json({ 
+                        success: true, 
+                        cartTotal: total,
+                        redirect: true
+                    });
+                });
+            });
+            return;
+        }
+
         let selectedIds = [];
         if (selectedItemsRaw) {
             try {
@@ -89,8 +141,12 @@ const PaymentController = {
                 let total = 0;
                 toProcess.forEach(i => total += i.quantity * i.price);
 
-                // Create order
-                Order.createOrder(user.id, total, paymentMethod, (err, orderId) => {
+                // Get currency and BNPL from request body (passed from frontend)
+                const displayCurrency = req.body.displayCurrency || 'SGD';
+                const bnplMonths = req.body.bnplMonths ? parseInt(req.body.bnplMonths) : null;
+
+                // Create order with currency and BNPL support
+                Order.createOrder(user.id, total, paymentMethod, displayCurrency, bnplMonths, (err, orderId) => {
                     if (err) throw err;
 
                     let done = 0;

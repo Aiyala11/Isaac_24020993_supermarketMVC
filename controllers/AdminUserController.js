@@ -41,21 +41,42 @@ const AdminUserController = {
             return res.redirect(`/admin/users/${id}/edit`);
         }
 
-        const data = { username, email, address: address || '', contact: contact || '', role: role || 'user' };
-
-        User.updateById(id, data, (err) => {
-            if (err) {
-                console.error('Error updating user:', err);
-                if (err.code === 'ER_DUP_ENTRY') {
-                    req.flash('error', 'Email already exists.');
-                } else {
-                    req.flash('error', 'Failed to update user');
-                }
+        // Get original user data to check for changes
+        User.getById(id, (err, originalUser) => {
+            if (err || !originalUser) {
+                req.flash('error', 'User not found');
                 return res.redirect(`/admin/users/${id}/edit`);
             }
 
-            req.flash('success', 'User updated successfully');
-            return res.redirect('/admin/users');
+            // Check if any changes were made
+            const hasChanges = 
+                originalUser.username !== username ||
+                originalUser.email !== email ||
+                originalUser.address !== address ||
+                originalUser.contact !== contact ||
+                originalUser.role !== role;
+
+            if (!hasChanges) {
+                req.flash('info', 'No changes were made');
+                return res.redirect(`/admin/users/${id}/edit`);
+            }
+
+            const data = { username, email, address: address || '', contact: contact || '', role: role || 'user' };
+
+            User.updateById(id, data, (err) => {
+                if (err) {
+                    console.error('Error updating user:', err);
+                    if (err.code === 'ER_DUP_ENTRY') {
+                        req.flash('error', 'Email already exists.');
+                    } else {
+                        req.flash('error', 'Failed to update user');
+                    }
+                    return res.redirect(`/admin/users/${id}/edit`);
+                }
+
+                req.flash('success', 'User updated successfully');
+                return res.redirect('/admin/users');
+            });
         });
     },
 

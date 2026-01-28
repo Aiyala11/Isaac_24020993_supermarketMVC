@@ -127,7 +127,13 @@ const ProductController = {
     const { productName, quantity, price, categoryId } = req.body;
     const image = req.file ? req.file.filename : null;
 
-    const product = { productName, quantity, price, categoryId, image };
+    const product = { 
+      productName, 
+      quantity: parseInt(quantity, 10), 
+      price: parseFloat(price), 
+      categoryId, 
+      image 
+    };
 
     Product.add(product, (err) => {
       if (err) {
@@ -171,7 +177,13 @@ const ProductController = {
     const { productName, quantity, price, categoryId } = req.body;
     const image = req.file ? req.file.filename : req.body.existingImage;
 
-    const product = { productName, quantity, price, categoryId, image };
+    const product = { 
+      productName, 
+      quantity: parseInt(quantity, 10), 
+      price: parseFloat(price), 
+      categoryId, 
+      image 
+    };
 
     Product.update(id, product, (err) => {
       if (err) {

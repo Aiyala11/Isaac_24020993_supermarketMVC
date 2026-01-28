@@ -33,12 +33,21 @@
     <%- include('partials/usernavbar') %>
   <% } %>
 
-  <!-- Success Toast -->
+  <!-- Message Toast (Success/Info/Error) -->
   <% if (typeof messages !== 'undefined' && messages && messages.length > 0) { %>
+    <% 
+      let alertClass = 'alert-success';
+      let icon = 'bi-check-circle';
+      const msg = messages[0];
+      if (msg && (msg.includes('No changes') || msg.includes('info'))) {
+        alertClass = 'alert-info';
+        icon = 'bi-info-circle';
+      }
+    %>
     <div id="successToast" class="position-fixed top-0 end-0 m-3" style="z-index: 9999; display: block;">
-      <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-bottom: 0;">
-        <i class="bi bi-check-circle"></i>
-        <span><%= messages[0] %></span>
+      <div class="alert <%= alertClass %> alert-dismissible fade show" role="alert" style="margin-bottom: 0;">
+        <i class="bi <%= icon %>"></i>
+        <span><%= msg %></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
     </div>
@@ -46,7 +55,7 @@
       setTimeout(() => {
         const toast = document.getElementById('successToast');
         if (toast) toast.style.display = 'none';
-      }, 4000);
+      }, 3000);
     </script>
   <% } %>
 
@@ -112,7 +121,8 @@
                 </div>
                 <div class="col-md-6">
                   <label class="form-label" for="contact">Contact</label>
-                  <input class="form-control" id="contact" name="contact" placeholder="e.g. +65 8888 8888" value="<%= user.contact || '' %>">
+                  <input class="form-control" id="contact" name="contact" placeholder="e.g. +65 8888 8888" value="<%= user.contact || '' %>" maxlength="20">
+                  <small class="text-muted">8 digits (excluding country code)</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label" for="address">Delivery Address</label>
@@ -166,6 +176,19 @@
                 const email = document.getElementById('email').value;
                 const contact = document.getElementById('contact').value;
                 const address = document.getElementById('address').value;
+                const alert = document.getElementById('validationAlert');
+                const message = document.getElementById('validationMessage');
+
+                // Validate phone number if provided (8 digits excluding country code)
+                if (contact && contact.trim() !== '') {
+                  const phoneDigits = contact.replace(/\D/g, '');
+                  if (phoneDigits.length !== 8) {
+                    message.textContent = 'Phone number must have exactly 8 digits (excluding country code)';
+                    alert.classList.add('show');
+                    setTimeout(() => alert.classList.remove('show'), 3000);
+                    return false;
+                  }
+                }
 
                 // Check if anything changed
                 const hasChanges = 
@@ -175,7 +198,7 @@
                   address !== originalData.address;
 
                 if (!hasChanges) {
-                  const alert = document.getElementById('validationAlert');
+                  message.textContent = 'No changes made. Please update at least one field.';
                   alert.classList.add('show');
                   setTimeout(() => alert.classList.remove('show'), 3000);
                   return false;

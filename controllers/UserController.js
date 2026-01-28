@@ -194,10 +194,16 @@ const UserController = {
                 return res.redirect('/logout');
             }
 
+            // Get all flash messages
+            const successMessages = req.flash('success');
+            const infoMessages = req.flash('info');
+            const errorMessages = req.flash('error');
+            const allMessages = [...successMessages, ...infoMessages];
+
             res.render('profile', {
                 user,
-                messages: req.flash('success'),
-                errors: req.flash('error')
+                messages: allMessages,
+                errors: errorMessages
             });
         });
     },
@@ -212,6 +218,15 @@ const UserController = {
             return res.redirect('/profile');
         }
 
+        // Validate phone number if provided (must have exactly 8 digits)
+        if (contact && contact.trim() !== '') {
+            const phoneDigits = contact.replace(/\D/g, '');
+            if (phoneDigits.length !== 8) {
+                req.flash('error', 'Phone number must have exactly 8 digits (excluding country code).');
+                return res.redirect('/profile');
+            }
+        }
+
         const payload = {
             username: username.trim(),
             email: email.trim(),
@@ -219,27 +234,47 @@ const UserController = {
             contact: (contact || '').trim()
         };
 
-        User.updateProfile(userId, payload, (err) => {
-            if (err) {
-                console.error('Error updating profile:', err);
-                if (err.code === 'ER_DUP_ENTRY') {
-                    req.flash('error', 'This email is already in use.');
-                } else {
-                    req.flash('error', 'Failed to update profile.');
-                }
+        // Get current user to check for changes
+        User.getById(userId, (err, currentUser) => {
+            if (err || !currentUser) {
+                req.flash('error', 'User not found.');
                 return res.redirect('/profile');
             }
 
-            req.session.user = {
-                ...req.session.user,
-                username: payload.username,
-                email: payload.email,
-                address: payload.address,
-                contact: payload.contact
-            };
+            // Check if any changes were made
+            const hasChanges = 
+                currentUser.username !== payload.username ||
+                currentUser.email !== payload.email ||
+                currentUser.address !== payload.address ||
+                currentUser.contact !== payload.contact;
 
-            req.flash('success', 'Profile updated successfully.');
-            return res.redirect('/profile');
+            if (!hasChanges) {
+                req.flash('info', 'No changes were made');
+                return res.redirect('/profile');
+            }
+
+            User.updateProfile(userId, payload, (err) => {
+                if (err) {
+                    console.error('Error updating profile:', err);
+                    if (err.code === 'ER_DUP_ENTRY') {
+                        req.flash('error', 'This email is already in use.');
+                    } else {
+                        req.flash('error', 'Failed to update profile.');
+                    }
+                    return res.redirect('/profile');
+                }
+
+                req.session.user = {
+                    ...req.session.user,
+                    username: payload.username,
+                    email: payload.email,
+                    address: payload.address,
+                    contact: payload.contact
+                };
+
+                req.flash('success', 'Profile updated successfully');
+                return res.redirect('/profile');
+            });
         });
     },
 
@@ -301,7 +336,7 @@ const UserController = {
             }
 
             req.flash('success', `User ${username} updated successfully.`);
-            return res.redirect(`/admin/users/${userId}/edit`);
+            return res.redirect('/admin/users');
         });
     },
 

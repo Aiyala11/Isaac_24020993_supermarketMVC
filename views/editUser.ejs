@@ -7,10 +7,30 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <title>Edit User</title>
-  <style> body { background:#f8f9fa } .card { margin-top: 1rem; }</style>
+  <style> 
+    body { background:#f8f9fa } 
+    .card { margin-top: 1rem; }
+    .info-toast { position: fixed; top: 20px; right: 20px; background: #17a2b8; color: white; padding: 14px 20px; border-radius: 12px; box-shadow: 0 8px 24px rgba(23, 162, 184, 0.3); z-index: 9999; display: none; align-items: center; gap: 10px; animation: slideIn 0.3s ease-out; }
+    .info-toast.show { display: flex; }
+    @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
 </head>
 <body>
   <%- include('partials/adminnavbar') %>
+
+  <!-- Info Toast for No Changes -->
+  <% if (typeof messages !== 'undefined' && messages && messages.length > 0) { %>
+    <div id="infoToast" class="info-toast show">
+      <i class="bi bi-info-circle"></i>
+      <span id="toastMessage"><%= messages[0] %></span>
+    </div>
+    <script>
+      setTimeout(() => {
+        const toast = document.getElementById('infoToast');
+        if (toast) toast.classList.remove('show');
+      }, 3000);
+    </script>
+  <% } %>
 
   <div class="container mt-4">
     <div class="card">
@@ -21,26 +41,26 @@
           <div class="alert alert-danger"><%= errors.join('<br>') %></div>
         <% } %>
 
-        <form method="POST" action="/admin/users/<%= user.id %>">
+        <form method="POST" action="/admin/users/<%= user.id %>" onsubmit="return validateUserChange()">
           <div class="mb-3">
             <label class="form-label">Username</label>
-            <input name="username" class="form-control" value="<%= user.username %>" required>
+            <input id="username" name="username" class="form-control" value="<%= user.username %>" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Email</label>
-            <input name="email" type="email" class="form-control" value="<%= user.email %>" required>
+            <input id="email" name="email" type="email" class="form-control" value="<%= user.email %>" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Address</label>
-            <input name="address" class="form-control" value="<%= user.address %>">
+            <input id="address" name="address" class="form-control" value="<%= user.address %>">
           </div>
           <div class="mb-3">
             <label class="form-label">Contact</label>
-            <input name="contact" class="form-control" value="<%= user.contact %>">
+            <input id="contact" name="contact" class="form-control" value="<%= user.contact %>">
           </div>
           <div class="mb-3">
             <label class="form-label">Role</label>
-            <select name="role" class="form-select">
+            <select id="role" name="role" class="form-select">
               <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
               <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
             </select>
@@ -54,6 +74,57 @@
       </div>
     </div>
   </div>
+
+  <script>
+    const originalData = {
+      username: '<%= user.username %>',
+      email: '<%= user.email %>',
+      address: '<%= user.address %>',
+      contact: '<%= user.contact %>',
+      role: '<%= user.role %>'
+    };
+
+    function validateUserChange() {
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const address = document.getElementById('address').value;
+      const contact = document.getElementById('contact').value;
+      const role = document.getElementById('role').value;
+
+      const hasChanges = 
+        username !== originalData.username ||
+        email !== originalData.email ||
+        address !== originalData.address ||
+        contact !== originalData.contact ||
+        role !== originalData.role;
+
+      if (!hasChanges) {
+        showValidationAlert('No changes were made');
+        return false;
+      }
+
+      return true;
+    }
+
+    function showValidationAlert(message) {
+      const toast = document.getElementById('infoToast');
+      if (!toast) {
+        const newToast = document.createElement('div');
+        newToast.id = 'infoToast';
+        newToast.className = 'info-toast show';
+        newToast.innerHTML = '<i class="bi bi-info-circle"></i><span id="toastMessage">' + message + '</span>';
+        document.body.appendChild(newToast);
+      } else {
+        const toastMessage = document.getElementById('toastMessage');
+        toastMessage.textContent = message;
+        toast.classList.add('show');
+      }
+      setTimeout(() => {
+        const t = document.getElementById('infoToast');
+        if (t) t.classList.remove('show');
+      }, 3000);
+    }
+  </script>
 
 </body>
 </html>

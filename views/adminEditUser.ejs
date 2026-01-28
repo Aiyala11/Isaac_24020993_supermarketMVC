@@ -31,8 +31,8 @@
     .user-info strong { color: #0f5132; }
     .change-indicator { display: none; padding: 12px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 12px; margin-top: 16px; color: #856404; font-weight: 600; }
     .change-indicator.show { display: flex; align-items: center; gap: 8px; }
-    .success-toast { position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 14px 20px; border-radius: 12px; box-shadow: 0 8px 24px rgba(40, 167, 69, 0.3); z-index: 9999; display: none; align-items: center; gap: 10px; animation: slideIn 0.3s ease-out; }
-    .success-toast.show { display: flex; }
+    .info-toast { position: fixed; top: 20px; right: 20px; background: #17a2b8; color: white; padding: 14px 20px; border-radius: 12px; box-shadow: 0 8px 24px rgba(23, 162, 184, 0.3); z-index: 9999; display: none; align-items: center; gap: 10px; animation: slideIn 0.3s ease-out; }
+    .info-toast.show { display: flex; }
     @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @media (max-width: 575px) { .form-box { padding: 24px; } .form-header h1 { font-size: 24px; } }
   </style>
@@ -41,17 +41,17 @@
 
   <%- include('partials/adminnavbar') %>
 
-  <!-- Success Toast -->
+  <!-- Info Toast for No Changes -->
   <% if (typeof messages !== 'undefined' && messages && messages.length > 0) { %>
-    <div id="successToast" class="success-toast show">
-      <i class="bi bi-check-circle"></i>
+    <div id="infoToast" class="info-toast show">
+      <i class="bi bi-info-circle"></i>
       <span id="toastMessage"><%= messages[0] %></span>
     </div>
     <script>
       setTimeout(() => {
-        const toast = document.getElementById('successToast');
+        const toast = document.getElementById('infoToast');
         if (toast) toast.classList.remove('show');
-      }, 4000);
+      }, 3000);
     </script>
   <% } %>
 
@@ -191,12 +191,22 @@
     }
 
     function showValidationAlert(message) {
-      const toast = document.getElementById('successToast');
-      const toastMessage = document.getElementById('toastMessage');
-      toastMessage.textContent = message;
-      toast.style.background = '#dc3545';
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 3000);
+      const toast = document.getElementById('infoToast');
+      if (!toast) {
+        const newToast = document.createElement('div');
+        newToast.id = 'infoToast';
+        newToast.className = 'info-toast show';
+        newToast.innerHTML = '<i class="bi bi-exclamation-circle"></i><span id="toastMessage">' + message + '</span>';
+        document.body.appendChild(newToast);
+      } else {
+        const toastMessage = document.getElementById('toastMessage');
+        toastMessage.textContent = message;
+        toast.classList.add('show');
+      }
+      setTimeout(() => {
+        const t = document.getElementById('infoToast');
+        if (t) t.classList.remove('show');
+      }, 3000);
     }
 
     // Show success toast if messages exist
